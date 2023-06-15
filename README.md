@@ -4,7 +4,7 @@
 
 ## Description
 
-This repository was created to train and test the [nnU-Net](https://github.com/MIC-DKFZ/nnUNet) in a disc labeling context. Depending on the results, the method will be integrated in our [Benchmark](https://github.com/spinalcordtoolbox/disc-labeling-benchmark).
+This repository was created to train and test the [nnU-Net](https://github.com/MIC-DKFZ/nnUNet) in a disc labeling context. Depending on the results, the method will ultimately be integrated in our [Disc labeling benchmark](https://github.com/spinalcordtoolbox/disc-labeling-benchmark).
 
 ## Getting Started
 
