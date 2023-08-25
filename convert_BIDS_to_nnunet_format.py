@@ -105,19 +105,24 @@ def create_disc_mask(label):
     
     # Create new numpy array
     new_label = np.zeros_like(label.data)
+
     # Get label dimensions
     nx, ny, nz, nt, px, py, pz, pt = label.dim
+
     # Loop in labels list
+    max_label = 0
     radius = 10
     for coord in label.getNonZeroCoordinates(sorting='value'):
-        if coord[-1] < 25: # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
+        if coord[-1] <= 25: # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
+            if coord[-1] > max_label: # Extract max label
+                max_label = coord[-1]
             x0, y0, z0, value = coord
 
             x, y, z = np.mgrid[0:nx:1]*px, np.mgrid[0:ny:1]*py, np.mgrid[0:nz:1]*pz
             r = np.sqrt((x - x0)**2 + (y - y0)**2 + (z - z0)**2)
             r[r > radius] = 0
             new_label += r
-    return new_label
+    return new_label, max_label
 
 
 def main():
