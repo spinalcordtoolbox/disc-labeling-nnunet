@@ -42,7 +42,7 @@ def get_parser():
     return parser
 
 
-def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, counter_indent=0):
+def convert_subject(list_labels, path_out_images, path_out_labels, channel_dict, DS_name, counter_indent=0):
     """Function to get image from original BIDS dataset modify if needed and place
         it with a compatible name in nnUNet dataset.
 
@@ -59,6 +59,7 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
         nb_class (int): Maximum number of class
 
     """
+    nb_class = 0
     counter = counter_indent
     for label_path in list_labels:
         img_path = get_img_path_from_label_path(path)
@@ -74,17 +75,7 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
 
             # Create new nnunet paths
             nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
-            nnunet_label_path = os.path.join(path_out_images, f"{DS_name}-{sub_name}_{counter:03d}_{channel:04d}.nii.gz") # We may have multiple contrasts for the same image
-
-    if os.path.exists(subject_image_file):
-        if label_suffix is not None:
-            if os.path.exists(subject_label_file):
-                subject_label_file_nnunet = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
-                list_labels.append(subject_label_file_nnunet)
-
-                subject_image_file_nnunet = os.path.join(path_out_images,
-                                                         f"{DS_name}-{sub_name}_{counter:03d}_{channel:04d}.nii.gz")
-                list_images.append(subject_image_file_nnunet)
+            nnunet_img_path = os.path.join(path_out_images, f"{DS_name}-{sub_name}_{counter:03d}_{channel_dict[contrast]:04d}.nii.gz")
 
             # Load and reorient image and label to RSP
             label = Image(label_path).change_orientation('RSP')
@@ -103,7 +94,7 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
             # Save images
             label.save(nnunet_label_path)
             img.save(nnunet_img_path)
-        print(f"contrast {contrast} for subject {sub_name} does not exist this contrast is ignored")
+    return counter, nb_class+1 # +1 to add the background
 
 
 def create_disc_mask(label):
