@@ -86,20 +86,23 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
                                                          f"{DS_name}-{sub_name}_{counter:03d}_{channel:04d}.nii.gz")
                 list_images.append(subject_image_file_nnunet)
 
-                # Load and reorient image and label to RSP
-                label = Image(os.path.abspath(subject_label_file)).change_orientation('RSP')
-                img = Image(os.path.abspath(subject_image_file)).change_orientation('RSP')
+            # Load and reorient image and label to RSP
+            label = Image(label_path).change_orientation('RSP')
+            img = Image(img_path).change_orientation('RSP')
 
-                # Create new discs masks with spots instead of single points
-                label = create_disc_mask(label)
+            # Create new discs masks with spots instead of single points
+            label, max_label = create_disc_mask(label)
 
-                # Store data in the output folder
-                #shutil.copy2(, subject_label_file_nnunet)
-                #shutil.copy2(, subject_image_file_nnunet)
+            # Update number of class
+            if max_label > nb_class:
+                nb_class = max_label
 
-            else:
-                print(f"Label for image {subject_image_file} does not exist this {sub_name} is ignored")
-    else:
+            # Extract number of discs labels
+            label.getNonZeroCoordinates(sorting='value')[-1]
+
+            # Save images
+            label.save(nnunet_label_path)
+            img.save(nnunet_img_path)
         print(f"contrast {contrast} for subject {sub_name} does not exist this contrast is ignored")
 
 
