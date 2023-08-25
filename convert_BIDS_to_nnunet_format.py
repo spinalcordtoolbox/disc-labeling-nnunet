@@ -135,6 +135,11 @@ def main():
     with open(args.config, "r") as file:
         config = json.load(file)
 
+    # Init channel dict
+    channel_dict = {}
+    for i, contrast in enumerate(CONTRAST[config[CONTRASTS]]):
+        channel_dict[contrast] = i
+
     # create individual directories for train and test images and labels
     path_out_imagesTr = Path(os.path.join(path_out, 'imagesTr'))
     path_out_imagesTs = Path(os.path.join(path_out, 'imagesTs'))
@@ -152,24 +157,22 @@ def main():
     pathlib.Path(path_out_labelsTs).mkdir(parents=True, exist_ok=True)
 
     # Convert training and validation subjects to nnunet format
-    train_images, train_labels = convert_subjects(list_labels=train_labels,
+    counter_train, nb_class_train = convert_subjects(list_labels=train_labels,
                                                   path_out_images=path_out_imagesTr,
                                                   path_out_labels=path_out_labelsTr,
+                                                  channel_dict=channel_dict,
                                                   DS_name=DS_name)
 
     # Convert testing subjects to nnunet format
-    test_images, test_labels = convert_subjects(list_labels=test_labels,
+    counter_test, nb_class_test = convert_subjects(list_labels=test_labels,
                                                 path_out_images=path_out_imagesTs,
                                                 path_out_labels=path_out_labelsTs,
-                                                DS_name=DS_name)
+                                                channel_dict=channel_dict,
+                                                DS_name=DS_name,
+                                                counter_indent=counter_train)
 
-        else:
-            print("Skipping file, could not be located in the Train or Test splits split.", subject)
-
-    logger.info(f"Number of training and validation subjects (including sessions): {train_ctr}")
-    logger.info(f"Number of test subjects (including sessions): {test_ctr}")
-    # assert train_ctr == len(train_subjects), 'No. of train/val images do not match'
-    # assert test_ctr == len(test_subjects), 'No. of test images do not match'
+    logger.info(f"Number of training and validation subjects: {counter_train}")
+    logger.info(f"Number of test subjects: {counter_test}")
 
     # c.f. dataset json generation
     # In nnUNet V2, dataset.json file has become much shorter. The description of the fields and changes
