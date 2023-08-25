@@ -217,24 +217,20 @@ def main():
 
     json_dict['channel_names'] = {v: k for k, v in channel_dict.items()}
 
-    json_dict['labels'] = {
-        "background": 0,
-        f"{contrast}": 1,
-    }
+    json_dict['labels'] = {"background": 0}
+    
+    # Adding discs number as individual classes
+    for num_disc in range(max(nb_class_train, nb_class_test)):
+        json_dict['labels'][f'disc_{num_disc+1}'] = num_disc+1
 
-    json_dict["numTraining"] = train_ctr + 1
+    json_dict["numTraining"] = counter_train
+
     # Needed for finding the files correctly. IMPORTANT! File endings must match between images and segmentations!
     json_dict['file_ending'] = ".nii.gz"
     json_dict["overwrite_image_reader_writer"] = "SimpleITKIO"
 
-    # create dataset_description.json
-    json_object = json.dumps(json_dict, indent=4)
-    # write to dataset description
-    # nn-unet requires it to be "dataset.json"
-    dataset_dict_name = f"dataset.json"
-    with open(os.path.join(path_out, dataset_dict_name), "w") as outfile:
-        outfile.write(json_object)
-
+    # create dataset.json
+    json_object = json.dumps(json_dict, open(os.path.join(path_out, "dataset.json"), "w"), indent=4)
 
 if __name__ == '__main__':
     main()
