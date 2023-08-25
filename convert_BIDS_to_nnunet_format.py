@@ -50,11 +50,13 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
         list_labels (list): List containing the paths of training/testing labels in the nnUNetv2 format.
         path_out_images (str): path to the images directory in the new dataset (test or train).
         path_out_labels (str): path to the labels directory in the new dataset (test or train).
+        channel_dict (dict): Association dictionary between MRI contrasts and integer values compatible with nnUNet documentation (ex: T1w = 1, T2w = 2, FLAIR = 3).
         DS_name (str): Dataset name.
+        counter_indent (int): indent for file numbering.
 
     Returns:
-        list_images (list): List containing the paths of training/testing images in the nnUNetv2 format.
-        list_labels (list): List containing the paths of training/testing labels in the nnUNetv2 format.
+        counter (int): Last file number used
+        nb_class (int): Maximum number of class
 
     """
     counter = counter_indent
@@ -63,8 +65,14 @@ def convert_subject(list_labels, path_out_images, path_out_labels, DS_name, coun
         if not os.path.exists(img_path) or not os.path.exists(label_path):
             print(f'Error while loading subject\n {img_path} or {label_path} might not exist --> skipping subject')
         else:
+            # Increment counter for every path --> different from nnunet conventional use where the same number is the same for every subject (but need full registration)
             counter+=1
+
+            # Extract information from the img_path
             sub_name, sessionID, filename, modality = fetch_subject_and_session(img_path)
+            contrast = fetch_contrast(img_path)
+
+            # Create new nnunet paths
             nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
             nnunet_label_path = os.path.join(path_out_images, f"{DS_name}-{sub_name}_{counter:03d}_{channel:04d}.nii.gz") # We may have multiple contrasts for the same image
 
