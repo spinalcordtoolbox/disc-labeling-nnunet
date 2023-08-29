@@ -57,7 +57,7 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
     nb_class = 0
     counter = counter_indent
     for label_path in list_labels:
-        img_path = get_img_path_from_label_path(path)
+        img_path = get_img_path_from_label_path(label_path)
         if not os.path.exists(img_path) or not os.path.exists(label_path):
             print(f'Error while loading subject\n {img_path} or {label_path} might not exist --> skipping subject')
         else:
@@ -82,9 +82,6 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
             # Update number of class
             if max_label > nb_class:
                 nb_class = max_label
-
-            # Extract number of discs labels
-            label.getNonZeroCoordinates(sorting='value')[-1]
 
             # Save images
             label.save(nnunet_label_path)
