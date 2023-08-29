@@ -132,7 +132,7 @@ def main():
 
     # Init channel dict
     channel_dict = {}
-    for i, contrast in enumerate(CONTRAST[config[CONTRASTS]]):
+    for i, contrast in enumerate(CONTRAST[config['CONTRASTS']]):
         channel_dict[contrast] = i
 
     # create individual directories for train and test images and labels
