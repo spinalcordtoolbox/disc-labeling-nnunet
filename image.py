@@ -2,6 +2,7 @@ import os
 import numpy as np
 import nibabel as nib
 import logging
+from copy import deepcopy
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class Image(object):
     Create an object that behaves similarly to nibabel's image object. Useful additions include: dims, change_orientation and getNonZeroCoordinates.
     """
 
-    def __init__(self, param=None):
+    def __init__(self, param=None, hdr=None, orientation=None, absolutepath=None, dim=None):
         """
         :param param: string indicating a path to a image file or an `Image` object.
         """
@@ -19,16 +20,34 @@ class Image(object):
         # initialization of all parameters
         self.affine = None
         self.data = None
-        self._path = os.path.abspath(param)
+        self._path = None
         self.ext = ""
 
+        if absolutepath is not None:
+            self._path = os.path.abspath(absolutepath)
+        
         # Case 1: load an image from file
         if isinstance(param, str):
             self.loadFromPath(param)
         # Case 2: create a copy of an existing `Image` object
         elif isinstance(param, type(self)):
             self.copy(param)
+        # Case 3: create a blank image from a list of dimensions
+        elif isinstance(param, list):
+            self.data = np.zeros(param)
+            self.hdr = hdr.copy() if hdr is not None else nib.Nifti1Header()
+            self.hdr.set_data_shape(self.data.shape)
+        # Case 4: create an image from an existing data array
+        elif isinstance(param, (np.ndarray, np.generic)):
+            self.data = param
+            self.hdr = hdr.copy() if hdr is not None else nib.Nifti1Header()
+            self.hdr.set_data_shape(self.data.shape)
+        else:
+            raise TypeError('Image constructor takes at least one argument.')
     
+        # Fix any mismatch between the array's datatype and the header datatype
+        self.fix_header_dtype()
+
     @property
     def dim(self):
         return get_dimension(self)
@@ -55,6 +74,37 @@ class Image(object):
         """
         return self._path
     
+    @absolutepath.setter
+    def absolutepath(self, value):
+        if value is None:
+            self._path = None
+            return
+        elif not os.path.isabs(value) and self._path is not None:
+            value = os.path.join(os.path.dirname(self._path), value)
+        elif not os.path.isabs(value):
+            value = os.path.abspath(value)
+        self._path = value
+    
+    @property
+    def header(self):
+        return self.hdr
+
+    @header.setter
+    def header(self, value):
+        self.hdr = value
+
+    def __deepcopy__(self, memo):
+        return type(self)(deepcopy(self.data, memo), deepcopy(self.hdr, memo), deepcopy(self.orientation, memo), deepcopy(self.absolutepath, memo), deepcopy(self.dim, memo))
+
+    def copy(self, image=None):
+        if image is not None:
+            self.affine = deepcopy(image.affine)
+            self.data = deepcopy(image.data)
+            self.hdr = deepcopy(image.hdr)
+            self._path = deepcopy(image._path)
+        else:
+            return deepcopy(self)
+
     def loadFromPath(self, path):
         """
         This function load an image from an absolute path using nibabel library
@@ -64,7 +114,7 @@ class Image(object):
         """
 
         self.absolutepath = os.path.abspath(path)
-        im_file = nib.load(self.absolutepath)
+        im_file = nib.load(self.absolutepath, mmap=True)
         self.affine = im_file.affine.copy()
         self.data = np.asanyarray(im_file.dataobj)
         self.hdr = im_file.header.copy()
@@ -130,6 +180,22 @@ class Image(object):
                 raise ValueError("sorting parameter must be either 'x', 'y', 'z' or 'value'")
 
         return list_coordinates
+    
+    def fix_header_dtype(self):
+        """
+        Change the header dtype to the match the datatype of the array.
+        """
+        # Using bool for nibabel headers is unsupported, so use uint8 instead:
+        # `nibabel.spatialimages.HeaderDataError: data dtype "bool" not supported`
+        dtype_data = self.data.dtype
+        if dtype_data == bool:
+            dtype_data = np.uint8
+
+        dtype_header = self.hdr.get_data_dtype()
+        if dtype_header != dtype_data:
+            logger.warning(f"Image header specifies datatype '{dtype_header}', but array is of type "
+                           f"'{dtype_data}'. Header metadata will be overwritten to use '{dtype_data}'.")
+            self.hdr.set_data_dtype(dtype_data)
     
     def save(self, path=None, dtype=None, verbose=1, mutable=False):
         """
