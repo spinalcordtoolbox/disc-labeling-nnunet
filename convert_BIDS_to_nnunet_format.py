@@ -37,7 +37,7 @@ def get_parser():
     return parser
 
 
-def convert_subject(list_labels, path_out_images, path_out_labels, channel_dict, DS_name, counter_indent=0):
+def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict, DS_name, counter_indent=0):
     """Function to get image from original BIDS dataset modify if needed and place
         it with a compatible name in nnUNet dataset.
 
