@@ -19,7 +19,7 @@ from collections import OrderedDict
 from loguru import logger
 import numpy as np
 
-from utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session
+from utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast
 from image import Image
 
 
