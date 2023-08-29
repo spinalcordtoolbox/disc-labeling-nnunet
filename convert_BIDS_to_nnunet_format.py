@@ -167,7 +167,7 @@ def main():
                                                 counter_indent=counter_train)
 
     logger.info(f"Number of training and validation subjects: {counter_train}")
-    logger.info(f"Number of test subjects: {counter_test}")
+    logger.info(f"Number of test subjects: {counter_test-counter_train}")
 
     # c.f. dataset json generation
     # In nnUNet V2, dataset.json file has become much shorter. The description of the fields and changes
@@ -225,7 +225,7 @@ def main():
     json_dict["overwrite_image_reader_writer"] = "SimpleITKIO"
 
     # create dataset.json
-    json_object = json.dumps(json_dict, open(os.path.join(path_out, "dataset.json"), "w"), indent=4)
+    json.dump(json_dict, open(os.path.join(path_out, "dataset.json"), "w"), indent=4)
 
 if __name__ == '__main__':
     main()
