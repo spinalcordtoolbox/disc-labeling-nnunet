@@ -10,18 +10,13 @@ Usage example:
 
 Naga Karthik, Jan Valosek, Théo Mathieu modified by Nathan Molinier
 """
-import re
 import argparse
-import shutil
 import pathlib
 from pathlib import Path
 import json
 import os
 from collections import OrderedDict
-import pandas as pd
 from loguru import logger
-from sklearn.model_selection import train_test_split
-import nibabel as nib
 import numpy as np
 
 from utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session
