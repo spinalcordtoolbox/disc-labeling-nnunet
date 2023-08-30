@@ -18,6 +18,7 @@ import os
 from collections import OrderedDict
 from loguru import logger
 import numpy as np
+from progress.bar import Bar
 
 from utils import CONTRAST, get_img_path_from_label_path, fetch_subject_and_session, fetch_contrast
 from image import Image
@@ -29,11 +30,13 @@ def get_parser():
     parser.add_argument('--config', required=True, help='Config JSON file where every label used for TRAINING, VALIDATION and TESTING has its path specified ~/<your_path>/config_data.json (Required)')
     parser.add_argument('--path-out', required=True, help='Path to output directory. Example: ~/data/dataset-nnunet (Required)')
     parser.add_argument('--dataset-name', '-dname', default='MyDataset', type=str,
-                        help='Specify the task name. Example: MyDataset')
+                        help='Specify the task name. (Default=MyDataset)')
     parser.add_argument('--dataset-number', '-dnum', default=501, type=int,
-                        help='Specify the task number, has to be greater than 500 but less than 999. e.g 502')
+                        help='Specify the task number, has to be greater than 500 but less than 999. (Default=501)')
     parser.add_argument('--seed', default=99, type=int,
-                        help='Seed to be used for the random number generator split into training and test sets.')
+                        help='Seed to be used for the random number generator split into training and test sets. (Default=99)')
+    parser.add_argument('--registered', default=False, type=bool,
+                        help='Set this variable to True if all the modalities/contrasts are available and corregistered for every subject (Default=False)')
     return parser
 
 
@@ -56,6 +59,10 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
     """
     nb_class = 0
     counter = counter_indent
+
+    # Init progression bar
+    bar = Bar(f'Load {split} data with pre-processing', max=len(img_paths))
+
     for label_path in list_labels:
         img_path = get_img_path_from_label_path(label_path)
         if not os.path.exists(img_path) or not os.path.exists(label_path):
@@ -66,7 +73,12 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
 
             # Extract information from the img_path
             sub_name, sessionID, filename, modality = fetch_subject_and_session(img_path)
-            contrast = fetch_contrast(img_path)
+
+            # Extract contrast from channel_dict
+            if 'multi_contrasts' in channel_dict.keys():
+                contrast = 'multi_contrasts'
+            else:
+                contrast = fetch_contrast(img_path) # TODO: fix this case to keep the subject number for each contrast
 
             # Create new nnunet paths
             nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
@@ -86,6 +98,10 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
             # Save images
             label.save(nnunet_label_path)
             img.save(nnunet_img_path)
+        # Plot progress
+        bar.suffix  = f'{list_labels.index(label_path)+1}/{len(list_labels)}'
+        bar.next()
+    bar.finish()
     return counter, nb_class+1 # +1 to add the background
 
 
@@ -130,10 +146,14 @@ def main():
     with open(args.config, "r") as file:
         config = json.load(file)
 
-    # Init channel dict
+    # To use channel dict with different modalities/contrasts, images need to be corregistered and all modalities/contrasts
+    # need to be available.
     channel_dict = {}
-    for i, contrast in enumerate(CONTRAST[config['CONTRASTS']]):
-        channel_dict[contrast] = i
+    if args.registered:
+        for i, contrast in enumerate(CONTRAST[config['CONTRASTS']]):
+            channel_dict[contrast] = i
+    else:
+        channel_dict['multi_contrasts'] = 0
 
     # create individual directories for train and test images and labels
     path_out_imagesTr = Path(os.path.join(path_out, 'imagesTr'))
