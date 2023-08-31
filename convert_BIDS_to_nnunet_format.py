@@ -61,7 +61,7 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
     counter = counter_indent
 
     # Init progression bar
-    bar = Bar(f'Load {split} data with pre-processing', max=len(img_paths))
+    bar = Bar('Convert data ', max=len(list_labels))
 
     for label_path in list_labels:
         img_path = get_img_path_from_label_path(label_path)
