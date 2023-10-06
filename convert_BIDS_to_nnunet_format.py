@@ -4,10 +4,6 @@ This script is based on https://github.com/ivadomed/utilities/blob/main/dataset_
 Converts BIDS-structured dataset to the nnUNetv2 dataset format. Full details about
 the format can be found here: https://github.com/MIC-DKFZ/nnUNet/blob/master/documentation/dataset_format.md
 
-Usage example:
-    python convert_bids_to_nnUNetv2.py --path-data ~/data/dataset --path-out ~/data/dataset-nnunet
-                    --dataset-name MyDataset --dataset-number 501 --split 0.8 0.2 --seed 99
-
 Naga Karthik, Jan Valosek, Théo Mathieu modified by Nathan Molinier
 """
 import argparse
@@ -37,10 +33,12 @@ def get_parser():
                         help='Seed to be used for the random number generator split into training and test sets. (Default=99)')
     parser.add_argument('--registered', default=False, type=bool,
                         help='Set this variable to True if all the modalities/contrasts are available and corregistered for every subject (Default=False)')
+    parser.add_argument('--one-class', default=False, type=bool,
+                        help='Set this variable to True if all the discs are part of the same class (Default=False)')
     return parser
 
 
-def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict, DS_name, counter_indent=0):
+def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict, DS_name, counter_indent=0, one_class=False):
     """Function to get image from original BIDS dataset modify if needed and place
         it with a compatible name in nnUNet dataset.
 
@@ -69,6 +67,7 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
             print(f'Error while loading subject\n {img_path} or {label_path} might not exist --> skipping subject')
         else:
             # Increment counter for every path --> different from nnunet conventional use where the same number is the same for every subject (but need full registration)
+            # TODO: fix this case to keep the subject number for each contrast
             counter+=1
 
             # Extract information from the img_path
@@ -78,7 +77,7 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
             if 'multi_contrasts' in channel_dict.keys():
                 contrast = 'multi_contrasts'
             else:
-                contrast = fetch_contrast(img_path) # TODO: fix this case to keep the subject number for each contrast
+                contrast = fetch_contrast(img_path) 
 
             # Create new nnunet paths
             nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
@@ -89,14 +88,16 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
             img = Image(img_path).change_orientation('RSP')
 
             # Create new discs masks with spots instead of single points
-            label, max_label = create_disc_mask(label)
-
+            label_mask, max_label = create_disc_mask(label, one_class=one_class)
+            
             # Update number of class
-            if max_label > nb_class:
+            if one_class:
+                nb_class = 1
+            elif max_label > nb_class:
                 nb_class = max_label
 
             # Save images
-            label.save(nnunet_label_path)
+            label_mask.save(nnunet_label_path)
             img.save(nnunet_img_path)
         # Plot progress
         bar.suffix  = f'{list_labels.index(label_path)+1}/{len(list_labels)}'
@@ -105,7 +106,7 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
     return counter, nb_class+1 # +1 to add the background
 
 
-def create_disc_mask(label):
+def create_disc_mask(label, one_class, radius=2):
     """
     Transform discs labels into discs masks with bigger spherical spots
     :param label: Image object of disc labels
@@ -119,7 +120,6 @@ def create_disc_mask(label):
 
     # Loop in labels list
     max_label = 0
-    radius = 4
     for coord in label.getNonZeroCoordinates(sorting='value'):
         if coord[-1] <= 25: # Remove labels superior to 25, especially 49 and 50 that correspond to the pontomedullary groove (49) and junction (50)
             if coord[-1] > max_label: # Extract max label
@@ -128,7 +128,8 @@ def create_disc_mask(label):
 
             x, y, z = np.mgrid[0:nx:1,0:ny:1,0:nz:1]
             mask = ((px*(x-x0))**2 + (py*(y-y0))**2 + (pz*(z-z0))**2) <= radius**2
-            new_label[mask] = value
+            new_label[mask] = value if not one_class else 1
+
     
     # Update label with new created mask
     label.data = new_label
@@ -176,7 +177,8 @@ def main():
                                                   path_out_images=path_out_imagesTr,
                                                   path_out_labels=path_out_labelsTr,
                                                   channel_dict=channel_dict,
-                                                  DS_name=DS_name)
+                                                  DS_name=DS_name,
+                                                  one_class=args.one_class)
 
     # Convert testing subjects to nnunet format
     counter_test, nb_class_test = convert_subjects(list_labels=test_labels,
@@ -184,7 +186,8 @@ def main():
                                                 path_out_labels=path_out_labelsTs,
                                                 channel_dict=channel_dict,
                                                 DS_name=DS_name,
-                                                counter_indent=counter_train)
+                                                counter_indent=counter_train,
+                                                one_class=args.one_class)
 
     logger.info(f"Number of training and validation subjects: {counter_train}")
     logger.info(f"Number of test subjects: {counter_test-counter_train}")
