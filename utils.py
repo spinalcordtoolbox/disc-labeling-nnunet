@@ -1,6 +1,8 @@
 import os
 import re
 from pathlib import Path
+import cc3d
+import numpy as np
 
 ## Variables
 CONTRAST = {'t1': ['T1w'],
@@ -77,3 +79,13 @@ def fetch_contrast(filename_path):
     Copied from https://github.com/spinalcordtoolbox/disc-labeling-hourglass
     '''
     return filename_path.rstrip(''.join(Path(filename_path).suffixes)).split('_')[-1]
+
+
+def extract_centroids_3D(arr):
+    '''
+    Extract centroids from a 3D numpy array
+    :param arr: 3D numpy array
+    '''
+    centroids = cc3d.statistics(cc3d.connected_components(arr))['centroids'][1:] # Remove backgroud <0>
+    centroids_sorted = centroids[np.argsort(centroids[:,1])] # Sort according to the vertical axis
+    return centroids_sorted.astype(int)
