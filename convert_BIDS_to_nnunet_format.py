@@ -29,8 +29,6 @@ def get_parser():
                         help='Specify the task name. (Default=MyDataset)')
     parser.add_argument('--dataset-number', '-dnum', default=501, type=int,
                         help='Specify the task number, has to be greater than 500 but less than 999. (Default=501)')
-    parser.add_argument('--seed', default=99, type=int,
-                        help='Seed to be used for the random number generator split into training and test sets. (Default=99)')
     parser.add_argument('--registered', default=False, type=bool,
                         help='Set this variable to True if all the modalities/contrasts are available and corregistered for every subject (Default=False)')
     parser.add_argument('--one-class', default=False, type=bool,
