@@ -64,39 +64,42 @@ def convert_subjects(list_labels, path_out_images, path_out_labels, channel_dict
         if not os.path.exists(img_path) or not os.path.exists(label_path):
             print(f'Error while loading subject\n {img_path} or {label_path} might not exist --> skipping subject')
         else:
-            # Increment counter for every path --> different from nnunet conventional use where the same number is the same for every subject (but need full registration)
-            # TODO: fix this case to keep the subject number for each contrast
-            counter+=1
-
-            # Extract information from the img_path
-            sub_name, sessionID, filename, modality = fetch_subject_and_session(img_path)
-
-            # Extract contrast from channel_dict
-            if 'multi_contrasts' in channel_dict.keys():
-                contrast = 'multi_contrasts'
-            else:
-                contrast = fetch_contrast(img_path) 
-
-            # Create new nnunet paths
-            nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
-            nnunet_img_path = os.path.join(path_out_images, f"{DS_name}-{sub_name}_{counter:03d}_{channel_dict[contrast]:04d}.nii.gz")
-
             # Load and reorient image and label to RSP
             label = Image(label_path).change_orientation('RSP')
             img = Image(img_path).change_orientation('RSP')
 
-            # Create new discs masks with spots instead of single points
-            label_mask, max_label = create_disc_mask(label, one_class=one_class)
-            
-            # Update number of class
-            if one_class:
-                nb_class = 1
-            elif max_label > nb_class:
-                nb_class = max_label
+            if img.data.shape == label.data.shape:
+                # Increment counter for every path --> different from nnunet conventional use where the same number is the same for every subject (but need full registration)
+                # TODO: fix this case to keep the subject number for each contrast
+                counter+=1
 
-            # Save images
-            label_mask.save(nnunet_label_path)
-            img.save(nnunet_img_path)
+                # Extract information from the img_path
+                sub_name, sessionID, filename, modality = fetch_subject_and_session(img_path)
+
+                # Extract contrast from channel_dict
+                if 'multi_contrasts' in channel_dict.keys():
+                    contrast = 'multi_contrasts'
+                else:
+                    contrast = fetch_contrast(img_path) 
+
+                # Create new nnunet paths
+                nnunet_label_path = os.path.join(path_out_labels, f"{DS_name}-{sub_name}_{counter:03d}.nii.gz")
+                nnunet_img_path = os.path.join(path_out_images, f"{DS_name}-{sub_name}_{counter:03d}_{channel_dict[contrast]:04d}.nii.gz")
+
+                # Create new discs masks with spots instead of single points
+                label_mask, max_label = create_disc_mask(label, one_class=one_class)
+                
+                # Update number of class
+                if one_class:
+                    nb_class = 1
+                elif max_label > nb_class:
+                    nb_class = max_label
+
+                # Save images
+                label_mask.save(nnunet_label_path)
+                img.save(nnunet_img_path)
+            else:
+                print(f'Error while loading subject\n {img_path} and {label_path} don"t have the same shape --> skipping subject')
         # Plot progress
         bar.suffix  = f'{list_labels.index(label_path)+1}/{len(list_labels)}'
         bar.next()
@@ -236,7 +239,7 @@ def main():
     json_dict['labels'] = {"background": 0}
     
     # Adding discs number as individual classes
-    for num_disc in range(max(nb_class_train, nb_class_test)):
+    for num_disc in range(max(nb_class_train, nb_class_test)-1): # -1 to remove background
         json_dict['labels'][f'disc_{num_disc+1}'] = num_disc+1
 
     json_dict["numTraining"] = counter_train
